@@ -30,8 +30,7 @@ def home():
 
 @app.route("/callback", methods=['POST'])
 def callback():
-    # 確認 LINE 傳過來的訊息是否合法
-    signature = request.headers.get('X-Line-Signature')
+    signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
 
     try:
@@ -43,10 +42,17 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    user_text = event.message.text
-    reply = TextSendMessage(text=f"你說的是：「{user_text}」")
-    line_bot_api.reply_message(event.reply_token, reply)
+    msg = event.message.text.strip()
+    try:
+        if "~" in msg:
+            start, end = msg.split("~")
+            result = get_titles_by_date(start.strip(), end.strip())
+        else:
+            result = get_titles_by_date(msg.strip())
+    except Exception:
+        result = "請輸入正確格式（如：2025-06-01 或 2025-06-01~2025-06-11）"
+
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(port=5000)
