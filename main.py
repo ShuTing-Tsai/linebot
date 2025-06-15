@@ -2,7 +2,8 @@ from flask import Flask, request, abort
 from linebot import WebhookHandler, LineBotApi
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage,FollowEvent
+    MessageEvent, TextMessage, TextSendMessage,FollowEvent,
+    FlexSendMessage, BubbleContainer, BoxComponent, TextComponent
 )
 from dotenv import load_dotenv
 import os
@@ -46,46 +47,66 @@ def callback():
 
     return 'OK'
 
-# 註冊一個函式來處理當使用者傳送文字訊息時的事件。
+# 建立 Flex bubble 列表
+def generate_flex_bubbles(entries):
+    bubbles = []
+    for row in entries.itertuples():
+        bubble = BubbleContainer(
+            body=BoxComponent(
+                layout="vertical",
+                contents=[
+                    TextComponent(text=str(row.發布日期.date()), weight="bold", size="sm", color="#888888"),
+                    TextComponent(text=row.標題, wrap=True, size="md", color="#000000", margin="md")
+                ]
+            )
+        )
+        bubbles.append(bubble)
+    return bubbles[:10]  # LINE carousel 最多10個 bubble
+
+# 使用者傳訊息的主要處理函式
 @handler.add(MessageEvent, message=TextMessage)
-# 使用者傳訊息邏輯
 def handle_message(event):
-    # 取得使用者輸入的訊息內容並去掉前後空白。
     msg = event.message.text.strip()
-    # 如果使用者輸入的是範圍（含 ~），則分開起始與結束日期。
-    # 否則就視為單一日期。
     try:
         if "~" in msg:
             start, end = msg.split("~")
-            result = get_titles_by_date(start.strip(), end.strip())
-            if isinstance(result, str):
-                # 沒資料的情況，直接回傳文字
-                reply = f"🔍 查詢日期：{start.strip()} ～ {end.strip()}\n\n{result}"
+            results = get_titles_by_date(start.strip(), end.strip())
+            if isinstance(results, str):
+                reply = TextSendMessage(text=f"🔍 查詢日期：{start.strip()} ～ {end.strip()}\n\n{results}")
             else:
-                reply = (
-                    f"🗂️ 以下是 {start.strip()} ～ {end.strip()} 之間的公告標題：\n\n"
-                    + result
+                bubbles = generate_flex_bubbles(results)
+                reply = FlexSendMessage(
+                    alt_text=f"{start.strip()}~{end.strip()} 公告標題",
+                    contents={
+                        "type": "carousel",
+                        "contents": [bubble.as_json_dict() for bubble in bubbles]
+                    }
                 )
         else:
             date = msg.strip()
-            result = get_titles_by_date(date)
-            if isinstance(result, str):
-                reply = f"📅 查詢日期：{date}\n\n{result}"
+            results = get_titles_by_date(date)
+            if isinstance(results, str):
+                reply = TextSendMessage(text=f"📅 查詢日期：{date}\n\n{results}")
             else:
-                reply = (
-                    f"📅 {date} 的公告標題如下：\n\n"
-                    + result
+                bubbles = generate_flex_bubbles(results)
+                reply = FlexSendMessage(
+                    alt_text=f"{date} 公告標題",
+                    contents={
+                        "type": "carousel",
+                        "contents": [bubble.as_json_dict() for bubble in bubbles]
+                    }
                 )
-    # 若發生錯誤（例如日期格式錯誤），就告訴使用者請輸入正確格式。
     except Exception:
-        result = (
-            "😥 抱歉，我沒看懂你輸入的格式！\n\n"
-            "請照以下範例輸入日期喔～\n"
-            "👉 單日查詢：2025-06-01\n"
-            "👉 區間查詢：2025-06-01~2025-06-11"
+        reply = TextSendMessage(
+            text=(
+                "😥 抱歉，我沒看懂你輸入的格式！\n\n"
+                "請照以下範例輸入日期喔～\n"
+                "👉 單日查詢：2025-06-01\n"
+                "👉 區間查詢：2025-06-01~2025-06-11"
+            )
         )
 
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+    line_bot_api.reply_message(event.reply_token, reply)
 
 @handler.add(FollowEvent)
 # 新使用者加入時自動發送歡迎訊息
