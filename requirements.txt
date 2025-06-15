@@ -1,0 +1,6 @@
+line-bot-sdk==1.18.0
+flask
+gunicorn
+python-dotenv
+twstock
+lxml
