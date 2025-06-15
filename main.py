@@ -7,6 +7,7 @@ from linebot.models import (
 from dotenv import load_dotenv
 import os
 import logging
+from utils import get_titles_by_date
 # Initialize Flask and logging
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
