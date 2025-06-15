@@ -83,7 +83,7 @@ def handle_message(event):
                     }
                 )
         elif '～' in msg:
-            start, end = msg.split("~")
+            start, end = msg.split("～")
             results = get_titles_by_date(start.strip(), end.strip())
             if isinstance(results, str):
                 reply = TextSendMessage(text=f"🔍 查詢日期：{start.strip()} ～ {end.strip()}\n\n{results}")
