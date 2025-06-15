@@ -82,6 +82,20 @@ def handle_message(event):
                         "contents": [bubble.as_json_dict() for bubble in bubbles]
                     }
                 )
+        elif '～' in msg:
+            start, end = msg.split("~")
+            results = get_titles_by_date(start.strip(), end.strip())
+            if isinstance(results, str):
+                reply = TextSendMessage(text=f"🔍 查詢日期：{start.strip()} ～ {end.strip()}\n\n{results}")
+            else:
+                bubbles = generate_flex_bubbles(results)
+                reply = FlexSendMessage(
+                    alt_text=f"{start.strip()}~{end.strip()} 公告標題",
+                    contents={
+                        "type": "carousel",
+                        "contents": [bubble.as_json_dict() for bubble in bubbles]
+                    }
+                )
         else:
             date = msg.strip()
             results = get_titles_by_date(date)
