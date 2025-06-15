@@ -4,4 +4,3 @@ gunicorn
 python-dotenv
 pandas
 beautifulsoup4
-json
