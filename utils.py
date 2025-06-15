@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import pandas as pd
-from tabulate import tabulate
+# from tabulate import tabulate
 
 url = "https://www.fda.gov.tw/DataAction"
 headers = {"User-Agent": "Mozilla/5.0"}
