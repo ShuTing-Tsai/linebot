@@ -48,20 +48,8 @@ def callback():
 
 # 註冊一個函式來處理當使用者傳送文字訊息時的事件。
 @handler.add(MessageEvent, message=TextMessage)
+# 使用者傳訊息邏輯
 def handle_message(event):
-    def handle_follow(event):
-        welcome_msg = (
-            "歡迎來到「衛服部食藥署新聞i報報」！\n\n"
-            "請輸入如下格式的日期：\n"
-            "例如：\n"
-            "👉 2025-06-01（單一天）\n"
-            "👉 2025-06-01~2025-06-11（區間）\n\n"
-            "我會自動回覆該日期內所有的新聞標題喔～"
-        )
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=welcome_msg)
-        )
     # 取得使用者輸入的訊息內容並去掉前後空白。
     msg = event.message.text.strip()
     # 如果使用者輸入的是範圍（含 ~），則分開起始與結束日期。
@@ -70,13 +58,51 @@ def handle_message(event):
         if "~" in msg:
             start, end = msg.split("~")
             result = get_titles_by_date(start.strip(), end.strip())
+            if isinstance(result, str):
+                # 沒資料的情況，直接回傳文字
+                reply = f"🔍 查詢日期：{start.strip()} ～ {end.strip()}\n\n{result}"
+            else:
+                reply = (
+                    f"🗂️ 以下是 {start.strip()} ～ {end.strip()} 之間的公告標題：\n\n"
+                    + result
+                )
         else:
-            result = get_titles_by_date(msg.strip())
+            date = msg.strip()
+            result = get_titles_by_date(date)
+            if isinstance(result, str):
+                reply = f"📅 查詢日期：{date}\n\n{result}"
+            else:
+                reply = (
+                    f"📅 {date} 的公告標題如下：\n\n"
+                    + result
+                )
     # 若發生錯誤（例如日期格式錯誤），就告訴使用者請輸入正確格式。
     except Exception:
-        result = "請輸入正確格式（如：2025-06-01 或 2025-06-01~2025-06-11）"
+        result = (
+            "😥 抱歉，我沒看懂你輸入的格式！\n\n"
+            "請照以下範例輸入日期喔～\n"
+            "👉 單日查詢：2025-06-01\n"
+            "👉 區間查詢：2025-06-01~2025-06-11"
+        )
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+@handler.add(FollowEvent)
+# 新使用者加入時自動發送歡迎訊息
+def handle_follow(event):
+    welcome_msg = (
+        "歡迎來到「衛服部食藥署新聞i報報」！\n\n"
+        "請輸入如下格式的日期：\n"
+        "例如：\n"
+        "👉 2025-06-01（單一天）\n"
+        "👉 2025-06-01~2025-06-11（區間）\n\n"
+        "我會自動回覆該日期內所有的新聞標題喔～"
+    )
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=welcome_msg)
+    )
+
 
 if __name__ == "__main__":
     app.run(port=5000)
